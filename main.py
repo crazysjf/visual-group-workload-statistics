@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 import utils
+from goods_profile import GoodProfile
 
 def count_jpg_file(path):
     cnt = 0
@@ -69,6 +70,12 @@ def handle_good(good_path):
     (isShot, isProcessed) = is_good_effective(good_path)
     ret['isShot'] = isShot
     ret['isProcessed'] = isProcessed
+    ret['isOnShelf'] = "未知"
+    ret['create_time'] = None
+
+    gp = GoodProfile()
+    if gp.has_profile():
+        (ret['isOnShelf'], ret['create_time']) = gp.get_good_info(code)
 
     return ret
 
@@ -134,11 +141,11 @@ def write_to_exel(dict, path):
 
 
 
-    df = pd.DataFrame(columns = ['日期', '款号', '已拍', '已修','原始字符串'])
+    df = pd.DataFrame(columns = ['日期', '款号', '已拍', '已修', '已上架', '创建时间', '原始字符串'])
     for date in utils.sort_dates(dict.keys()):
         good_list = dict[date]
         for g in good_list:
-            r = {"日期":date, "已拍": g['isShot'], "已修": g['isProcessed'], "款号": g['code'], "原始字符串": g['orig_str']}
+            r = {"日期":date, "已拍": int(g['isShot']), "已修": int(g['isProcessed']), "款号": g['code'], "已上架": int(g['isOnShelf']), "创建时间": g['create_time'], "原始字符串": g['orig_str']}
             df = df.append(r,ignore_index=True)
 
     df.to_excel(writer, "详情", index=False)
@@ -147,6 +154,7 @@ def write_to_exel(dict, path):
 
 if __name__ == "__main__":
     root_path = "Z:\\11月"  # 月份文件夹
+    GoodProfile(root_path) # 必须以路径为参数初始化GoodProfile
     dict = analyze(root_path)
     dump_dict(dict)
     write_to_exel(dict, root_path)
