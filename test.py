@@ -12,3 +12,6 @@ print(int(False))
 # r = df.loc[df['first_name'] == 'Amy'].iloc[0]['f']
 #
 # print(r)
+import os
+root_path = os.path.dirname(__file__)
+print(root_path)

@@ -9,8 +9,11 @@ def count_jpg_file(path):
     l = os.listdir(path)
     for i in l:
         i_path = os.path.join(path,i)
+        ext = os.path.splitext(i)[1]
+        is_jpg = False
+        if ext == ".jpg" or ext == ".JPG" or ext == ".jpeg":
+            is_jpg = True
 
-        is_jpg = os.path.splitext(i)[1] == ".jpg"
         is_file = True #os.path.isfile(i_path)   此处会有比较严重的性能问题，先不判断
         if is_file and is_jpg:
             cnt = cnt + 1
@@ -84,18 +87,26 @@ def handle_one_day(day_path):
     ret_list = []
     goods = os.listdir(day_path)
     for g in goods:
+        # 忽略#开头商品
+        m = re.match(r'^#.*', g)
+        if m != None:
+            continue
+
         good_path = os.path.join(day_path,g)
         ret_list.append(handle_good(good_path))
 
     return ret_list
 
-def analyze(path):
+def analyze(path, day=None):
     '''
     分析指定文件夹。
     :param path: 月份文件夹
     :return: 结果字典
     '''
-    days = os.listdir(path)
+    if day != None:
+        days = [day]
+    else:
+        days = os.listdir(path)
 
     dict = {}
 
@@ -107,8 +118,8 @@ def analyze(path):
 
         dict[day] = handle_one_day(day_path)
         cnt = cnt +1
-        if cnt >= 3:
-            break
+        # if cnt >= 3:
+        #     break
 
     return dict
 
@@ -151,10 +162,36 @@ def write_to_exel(dict, path):
     df.to_excel(writer, "详情", index=False)
     writer.save()
 
+def start_work():
+    month_path = None
 
-if __name__ == "__main__":
-    root_path = "Z:\\11月"  # 月份文件夹
-    GoodProfile(root_path) # 必须以路径为参数初始化GoodProfile
-    dict = analyze(root_path)
+    # 调试时使用
+    #root_path = os.path.dirname(__file__)
+    root_path = "Z:\\"  # 月份文件夹
+
+
+    print("生产部门工作量统计工具")
+    print("该工具必须放到存放所有月份图片的位置才能使用")
+
+
+
+    while True:
+        month = input("请输入月份(2位数字)：")
+        month_path = "%s\%s月" % (root_path, month)
+        if os.path.isdir(month_path):
+            print("开始统计文件夹：%s" % month_path)
+            break
+        else:
+            print("未找到文件夹：%s，请确认输入是否有误" % month_path)
+
+
+    GoodProfile(month_path) # 必须以路径为参数初始化GoodProfile
+    dict = analyze(month_path)
     dump_dict(dict)
-    write_to_exel(dict, root_path)
+    write_to_exel(dict, month_path)
+    input("统计完成")
+
+import cProfile
+if __name__ == "__main__":
+    #cProfile.run("start_work()",   sort="cumulative")
+    start_work()

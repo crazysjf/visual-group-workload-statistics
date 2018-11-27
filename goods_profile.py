@@ -23,8 +23,8 @@ class GoodProfile():
                     self.df =  pd.read_excel(os.path.join(path, self.good_profile_file))
                     print("完成")
                     return
+            print("商品资料文件未找到")
 
-        print("商品资料文件未找到")
 
     def has_profile(self):
         '''判断是否存在商品资料文件'''
