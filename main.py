@@ -73,7 +73,7 @@ def handle_good(good_path):
     (isShot, isProcessed) = is_good_effective(good_path)
     ret['isShot'] = isShot
     ret['isProcessed'] = isProcessed
-    ret['isOnShelf'] = "未知"
+    ret['isOnShelf'] = False
     ret['create_time'] = None
 
     gp = GoodProfile()
@@ -87,12 +87,18 @@ def handle_one_day(day_path):
     ret_list = []
     goods = os.listdir(day_path)
     for g in goods:
+
         # 忽略#开头商品
         m = re.match(r'^#.*', g)
         if m != None:
             continue
 
         good_path = os.path.join(day_path,g)
+
+        # 忽略普通文件，只考虑文件夹
+        if not os.path.isdir(good_path):
+           continue
+
         ret_list.append(handle_good(good_path))
 
     return ret_list
