@@ -20,8 +20,18 @@ def count_jpg_file(path):
     return cnt
 
 
-def is_good_effective(good_path):
-    '''判断商品是否有效'''
+def calc_good_wordload(good_path):
+    '''
+    计算一个商品上的工作量，包括是否已拍，是否已修。
+    返回：(isShot, isProcessed)，isShot:是否已拍，isProcessed：是否已修
+    
+    已拍的判断：文件夹下面有10个以上的jpg文件，
+    或者任何一级子文件夹（文件夹名不能为：image）里面有10个以上的jpg文件。
+    
+    已修的判断：在文件夹里面寻找一个叫images的文件夹，判断里面是否有10个以上的jpg文件。
+    任何一个images文件夹判断成功即判断为已修
+    
+    '''
 
     isShot = False       # 已拍
     isProcessed = False  # 已修
@@ -32,17 +42,35 @@ def is_good_effective(good_path):
     jpg_cnt = count_jpg_file(good_path)
     if jpg_cnt >= 10:
         isShot = True
+    else:
+        # 如果文件夹根部没有找到，则深入一层子文件夹寻找
+        for i in l:
+            if i == 'images': # 跳过images文件夹
+                continue
+            i_path = os.path.join(good_path, i)
+            if os.path.isdir(i_path):
+                jpg_cnt = count_jpg_file(i_path)
+                if jpg_cnt >= 10:
+                    isShot = True
+                    break
 
-    images_dir_found = False
-    for i in l:
-        i_path = os.path.join(good_path,i)
-        if os.path.isdir(i_path):
-            l2 = os.listdir(i_path)
-            for i2 in l2:
-                if i2 == 'images':
-                    cnt = count_jpg_file(os.path.join(i_path,i2))
-                    if cnt >= 10:
-                        isProcessed = True
+    for root, dirs, files in os.walk(good_path):
+        if  'images' in dirs:
+            cnt = count_jpg_file(os.path.join(root, 'images'))
+            if cnt >= 10:
+                isProcessed = True
+                break
+
+    #
+    # for i in l:
+    #     i_path = os.path.join(good_path,i)
+    #     if os.path.isdir(i_path):
+    #         l2 = os.listdir(i_path)
+    #         for i2 in l2:
+    #             if i2 == 'images':
+    #                 cnt = count_jpg_file(os.path.join(i_path,i2))
+    #                 if cnt >= 10:
+    #                     isProcessed = True
     return (isShot, isProcessed)
 
 
@@ -70,7 +98,21 @@ def handle_good(good_path):
 
     ret['code'] = code
 
-    (isShot, isProcessed) = is_good_effective(good_path)
+    shooter = None # 拍图者
+    m = re.match(r'.*[pP](.)', orig_str)
+    if m != None:
+        shooter = m.group(1)
+    ret['shooter'] = shooter
+
+    processor = None #修图者
+    m = re.match(r'.*[xX]([^0-9])', orig_str)
+    if m != None:
+        processor = m.group(1)
+
+    ret['processor'] = processor
+
+
+    (isShot, isProcessed) = calc_good_wordload(good_path)
     ret['isShot'] = isShot
     ret['isProcessed'] = isProcessed
     ret['isOnShelf'] = False
@@ -93,6 +135,11 @@ def handle_one_day(day_path):
         if m != None:
             continue
 
+        # 忽略含有补拍字样的文件夹
+        m = re.match(r'.*补拍.*',g)
+        if m != None:
+            continue
+
         good_path = os.path.join(day_path,g)
 
         # 忽略普通文件，只考虑文件夹
@@ -103,9 +150,9 @@ def handle_one_day(day_path):
 
     return ret_list
 
-def analyze(path, day=None):
+def analyze_month(path, day=None):
     '''
-    分析指定文件夹。
+    分析指定月份文件夹。
     :param path: 月份文件夹
     :return: 结果字典
     '''
@@ -140,29 +187,66 @@ def dump_dict(dict):
 def write_to_exel(dict, path):
     writer = pd.ExcelWriter(os.path.join(path, '统计结果.xlsx'))
 
-    df = pd.DataFrame(columns = ['日期', '已拍', '已修'])
+    # 首先要枚举所有拍图者和修图者
+    shooters = set()
+    processors = set()
+    for date in utils.sort_dates(dict.keys()):
+        good_list = dict[date]
+        for g in good_list:
+            shooters.add(g['shooter'] if g['shooter'] != None else '不明(拍)')
+            processors.add(g['processor'] if g['processor'] != None else '不明(修)')
+
+    column_list = ['日期']
+    for e in shooters:
+        column_list.append(e)
+
+    for e in processors:
+        column_list.append(e)
+
+    print(column_list)
+    #df = pd.DataFrame(columns = ['日期', '已拍', '已修'])
+    df = pd.DataFrame(columns=column_list)
+
     for date in utils.sort_dates(dict.keys()):
         good_list = dict[date]
         nr_shot = 0
         nr_processed = 0
+        #初始化表示一行数据用的字典
+        r = {"日期":date}
+        for e in shooters:
+            r[e] = 0
+        for e in processors:
+            r[e] = 0
+
         for g in good_list:
             if g['isShot']:
-                nr_shot = nr_shot + 1
+                shooter = g['shooter'] if g['shooter'] != None else '不明(拍)'
+                r[shooter] = r[shooter] + 1
             if g['isProcessed']:
-                nr_processed = nr_processed + 1
+                processor = g['processor'] if g['processor'] != None else '不明(修)'
+                r[processor] = r[processor] + 1
 
 
-        r = {"日期":date, "已拍": nr_shot, "已修": nr_processed}
+       # r = {"日期":date, "已拍": nr_shot, "已修": nr_processed}
         df = df.append(r,ignore_index=True)
     df.to_excel(writer, "汇总", index=False)
-
-
 
     df = pd.DataFrame(columns = ['日期', '款号', '已拍', '已修', '已上架', '创建时间', '原始字符串'])
     for date in utils.sort_dates(dict.keys()):
         good_list = dict[date]
         for g in good_list:
-            r = {"日期":date, "已拍": int(g['isShot']), "已修": int(g['isProcessed']), "款号": g['code'], "已上架": int(g['isOnShelf']), "创建时间": g['create_time'], "原始字符串": g['orig_str']}
+            shot = 0
+            if g['isShot']:
+                shot = g['shooter'] if g['shooter'] != None else '不明'
+
+            processed = 0
+            if g['isProcessed']:
+                processed = g['processor'] if g['processor'] != None else '不明'
+
+            #r = {"日期":date, "已拍": int(g['isShot']), "已修": int(g['isProcessed']), "款号": g['code'], "已上架": int(g['isOnShelf']), "创建时间": g['create_time'], "原始字符串": g['orig_str']}
+            r = {"日期": date, "已拍": shot, "已修": processed, "款号": g['code'],
+                 "已上架": int(g['isOnShelf']), "创建时间": g['create_time'], "原始字符串": g['orig_str']}
+
             df = df.append(r,ignore_index=True)
 
     df.to_excel(writer, "详情", index=False)
@@ -192,7 +276,7 @@ def start_work():
 
 
     GoodProfile(month_path) # 必须以路径为参数初始化GoodProfile
-    dict = analyze(month_path)
+    dict = analyze_month(month_path)
     dump_dict(dict)
     write_to_exel(dict, month_path)
     input("统计完成")
