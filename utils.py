@@ -1,3 +1,6 @@
+import re
+pat = re.compile(r'([0-9]+)')
+
 
 def sort_dates(date_array):
     '''
@@ -14,7 +17,12 @@ def sort_dates(date_array):
             return 0
         else:
             try:
-                return int(s[1])
+                m = pat.search(s[1])
+                if m != None:
+                    i = int(m.group(1))
+                    return i
+                else:
+                    return 0
             except:
                 return 0
 
@@ -22,5 +30,5 @@ def sort_dates(date_array):
     return sorted(date_array, key=get_date_in_month)
 
 if __name__ == "__main__":
-    a = ['11.1','11.11','11.12','11.2','11.3','11.4','11.5','xxx', 'xxx.xxx']
+    a = ['11.1','11.11','11.12','11.2','11.3','11.4','11.5 以上','xxx', 'xxx.xxx']
     print(sort_dates(a))

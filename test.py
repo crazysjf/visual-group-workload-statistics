@@ -1,12 +1,3 @@
-l = [1,2,3]
-print(l)
+import utils
 
-s = {'a'}
-s.add('a')
-s.add('b')
-print(s)
-
-for e in s:
-        print(e)
-        l.append(e)
-print(l)
+l = ['11.1','11.11','11.12','11.2','11.3','11.4','11.5','xxx']

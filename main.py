@@ -193,8 +193,8 @@ def write_to_exel(dict, path):
     for date in utils.sort_dates(dict.keys()):
         good_list = dict[date]
         for g in good_list:
-            shooters.add(g['shooter'] if g['shooter'] != None else '不明(拍)')
-            processors.add(g['processor'] if g['processor'] != None else '不明(修)')
+            shooters.add(g['shooter']+"（拍）" if g['shooter'] != None else '不明(拍)')
+            processors.add(g['processor']+"（修）" if g['processor'] != None else '不明(修)')
 
     column_list = ['日期']
     for e in shooters:
@@ -220,10 +220,10 @@ def write_to_exel(dict, path):
 
         for g in good_list:
             if g['isShot']:
-                shooter = g['shooter'] if g['shooter'] != None else '不明(拍)'
+                shooter = g['shooter']+"（拍）" if g['shooter'] != None else '不明(拍)'
                 r[shooter] = r[shooter] + 1
             if g['isProcessed']:
-                processor = g['processor'] if g['processor'] != None else '不明(修)'
+                processor = g['processor']+"（修）" if g['processor'] != None else '不明(修)'
                 r[processor] = r[processor] + 1
 
 
@@ -266,8 +266,8 @@ def start_work():
 
 
     while True:
-        month = input("请输入月份(2位数字)：")
-        month_path = "%s\%s月" % (root_path, month)
+        month = input("请输入月份文件夹名：")
+        month_path = "%s\%s" % (root_path, month)
         if os.path.isdir(month_path):
             print("开始统计文件夹：%s" % month_path)
             break
